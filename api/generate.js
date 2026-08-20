@@ -93,7 +93,10 @@ async function analyzeSite(url) {
       const vis = await analyzeWithVision(shot);
       return { ...vis, method: "vision", screenshot: shot };
     } catch (e) {
-      try { return await analyzeSiteCss(url); } catch (_) { return { error: e.message }; }
+      try {
+        const css = await analyzeSiteCss(url);
+        return { ...(css || {}), visionError: e.message }; // временная диагностика
+      } catch (_) { return { error: e.message }; }
     }
   }
   try { return await analyzeSiteCss(url); } catch (e) { return { error: e.message }; }
