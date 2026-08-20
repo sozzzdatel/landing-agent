@@ -83,10 +83,11 @@ async function run(){
   const data=await r.json();if(data.error)throw new Error(data.error);
   cfg=data.config;lastHtml=data.html;
   st.research='done';
-  if(data.siteStyle&&data.siteStyle.found){
-    st.d_research='Нашёл на сайте: '+(data.siteStyle.colors||[]).join(', ')+(data.siteStyle.font?' · шрифт '+data.siteStyle.font:'')+' — применил к лендингу';
+  if(data.siteAnalysis&&(data.siteAnalysis.acc||data.siteAnalysis.acc2)){
+    const m=data.siteAnalysis.method==='vision'?'Посмотрел на сайт':'Прочитал код сайта';
+    st.d_research=m+': цвета '+[data.siteAnalysis.acc,data.siteAnalysis.acc2].filter(Boolean).join(', ')+(data.siteAnalysis.mood?' · стиль: '+data.siteAnalysis.mood:'')+' — применил к лендингу';
   }else if(brief.url){
-    st.d_research='Сайт не удалось прочитать (недоступен/защищён) — использую тему бренда';
+    st.d_research='Сайт не удалось проанализировать — использую тему бренда';
   }else{
     st.d_research='Сайт не указан — использую тему бренда';
   }
