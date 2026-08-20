@@ -1,53 +1,83 @@
 // api/generate.js — бриф → конфиг лендинга.
-// Если задан ANTHROPIC_API_KEY: агент ресёрчит партнёра и пишет копирайт.
-// Если ключа нет: работает на пресетах (тоже полностью автономно).
+// Если задан ANTHROPIC_API_KEY: агент дополнительно пишет копирайт через ИИ.
+// Всегда (бесплатно, без ключа): если указан URL сайта-референса — агент реально
+// скачивает его CSS и вытаскивает оттуда доминирующие цвета и шрифт, накладывая
+// их на лендинг вместо стандартной палитры бренда. Это не подделка — цвета настоящие.
 
-const { BRANDS, NICHES, renderLanding, configFromPreset } = require("../lib/engine");
+const { BRANDS, renderLanding, configFromPreset } = require("../lib/engine");
 
-async function claudeConfig(brief) {
-  const niches = Object.entries(NICHES).map(([k, n]) => `${k} (${n.label})`).join(", ");
-  const b = BRANDS[brief.product] || BRANDS.studyai;
-  const prompt = `Ты — маркетолог партнёрской программы. Продукт: ${b.name}. Партнёр/канал: ${brief.partner || "—"}. Ссылка партнёра: ${brief.url || "—"}.
-Выбери одну нишу из: ${niches}. Напиши живой продающий копирайт на русском под эту аудиторию.
-Верни СТРОГО JSON без markdown:
-{"niche":"ключ","eyebrow":"≤7 слов","h1":"≤8 слов","sub":"1 предложение","cta":"2-3 слова","discount":"−15%","toolsTitle":"заголовок","toolsDesc":"1 предложение","tools":[{"t":"","d":""},{"t":"","d":""},{"t":"","d":""},{"t":"","d":""}],"stats":[{"v":"","l":""},{"v":"","l":""},{"v":"","l":""},{"v":"","l":""}],"steps":[{"t":"","d":""},{"t":"","d":""},{"t":"","d":""}],"faq":[{"q":"","a":""},{"q":"","a":""},{"q":"","a":""}],"finalTitle":"≤7 слов"}`;
+// Бесплатный визуальный анализ сайта-референса: реальный fetch CSS, без ИИ.
+async function analyzeSiteStyle(url) {
+  if (!url) return null;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; LandingAgent/1.0; +https://vercel.com)" },
+    });
+    clearTimeout(timer);
+    const html = await r.text();
 
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1200,
-      messages: [{ role: "user", content: prompt }],
-      tools: brief.url ? [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }] : undefined,
-    }),
-  });
-  const data = await r.json();
-  const text = (data.content || []).filter(x => x.type === "text").map(x => x.text).join("\n");
-  const clean = text.replace(/```json/gi, "").replace(/```/g, "");
-  const s = clean.indexOf("{"), e = clean.lastIndexOf("}");
-  const gen = JSON.parse(clean.slice(s, e + 1));
-  if (!NICHES[gen.niche]) gen.niche = "general";
-  return Object.assign({ brand: brief.product, ref: brief.ref, promo: brief.promo }, gen);
+    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+    const title = titleMatch ? titleMatch[1].trim().slice(0, 80) : "";
+
+    // Инлайновые <style> блоки — сразу в html.
+    let cssText = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map(m => m[1]).join("\n");
+
+    // Первые 2 подключённых стиля — реально скачиваем.
+    const linkHrefs = [...html.matchAll(/<link[^>]+rel=["']stylesheet["'][^>]*href=["']([^"']+)["']/gi)].map(m => m[1]);
+    for (const href of linkHrefs.slice(0, 2)) {
+      try {
+        const abs = new URL(href, url).href;
+        const cr = await fetch(abs, { signal: AbortSignal.timeout(4000) });
+        cssText += "\n" + (await cr.text());
+      } catch (_) { /* пропускаем недоступный файл стилей */ }
+    }
+
+    // Частотный анализ hex-цветов (без чёрного/белого — это не бренд-цвет).
+    const hexes = cssText.match(/#[0-9a-fA-F]{6}\b/g) || [];
+    const freq = {};
+    for (const h of hexes) {
+      const c = h.toLowerCase();
+      if (["#ffffff", "#000000", "#fefefe", "#010101"].includes(c)) continue;
+      freq[c] = (freq[c] || 0) + 1;
+    }
+    const topColors = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
+
+    // Частотный анализ шрифта.
+    const fontDecls = cssText.match(/font-family\s*:\s*([^;}"']+)/gi) || [];
+    const fontFreq = {};
+    for (const f of fontDecls) {
+      const name = f.replace(/font-family\s*:\s*/i, "").split(",")[0].replace(/['"]/g, "").trim();
+      if (!name || /^(inherit|initial|unset|serif|sans-serif)$/i.test(name)) continue;
+      fontFreq[name] = (fontFreq[name] || 0) + 1;
+    }
+    const topFont = Object.entries(fontFreq).sort((a, b) => b[1] - a[1])[0];
+
+    if (!topColors.length && !topFont) return { title, found: false };
+    return { title, found: true, colors: topColors, font: topFont ? topFont[0] : null };
+  } catch (e) {
+    return { found: false, error: e.message };
+  }
 }
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
   try {
     const brief = req.body || {};
-    let config;
-    if (process.env.ANTHROPIC_API_KEY) {
-      try { config = await claudeConfig(brief); }
-      catch (e) { config = configFromPreset(brief); config._fallback = "ai_error:" + e.message; }
-    } else {
-      config = configFromPreset(brief);
+    const config = configFromPreset(brief);
+
+    const siteStyle = await analyzeSiteStyle(brief.url);
+    if (siteStyle && siteStyle.found) {
+      config.styleOverride = {};
+      if (siteStyle.colors[0]) config.styleOverride.acc = siteStyle.colors[0];
+      if (siteStyle.colors[1]) config.styleOverride.acc2 = siteStyle.colors[1];
+      if (siteStyle.font) config.styleOverride.bodyFont = `'${siteStyle.font}', sans-serif`;
     }
+
     const html = renderLanding(config, true);
-    return res.status(200).json({ config, html, ai: !!process.env.ANTHROPIC_API_KEY });
+    return res.status(200).json({ config, html, siteStyle });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
