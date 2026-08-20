@@ -21,6 +21,8 @@ module.exports = async (req, res) => {
   try {
     const { subdomain, html, partner = "", niche = "" } = req.body || {};
     if (!subdomain || !html) return res.status(400).json({ error: "subdomain и html обязательны" });
+    const safePartner = (partner && partner.trim()) ? partner.trim() : "partner";
+    const safeNiche = (niche && niche.trim()) ? niche.trim() : "general";
     const base = process.env.BASE_DOMAIN || "study24.ai";
     const project = "lp-partners";
     const alias = `${subdomain.toLowerCase().replace(/[^a-z0-9-]/g, "")}.${base}`;
@@ -31,7 +33,7 @@ module.exports = async (req, res) => {
         name: project, project, target: "production",
         files: [{ file: "index.html", data: html, encoding: "utf-8" }],
         projectSettings: { framework: null },
-        meta: { partner, niche },
+        meta: { partner: safePartner, niche: safeNiche },
       }),
     });
 
