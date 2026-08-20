@@ -82,7 +82,14 @@ async function run(){
   const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(brief)});
   const data=await r.json();if(data.error)throw new Error(data.error);
   cfg=data.config;lastHtml=data.html;
-  st.research='done';st.d_research=data.ai?'ИИ изучил аудиторию и подобрал нишу':'Ниша по пресету (ИИ-ключ не задан)';
+  st.research='done';
+  if(data.siteStyle&&data.siteStyle.found){
+    st.d_research='Нашёл на сайте: '+(data.siteStyle.colors||[]).join(', ')+(data.siteStyle.font?' · шрифт '+data.siteStyle.font:'')+' — применил к лендингу';
+  }else if(brief.url){
+    st.d_research='Сайт не удалось прочитать (недоступен/защищён) — использую тему бренда';
+  }else{
+    st.d_research='Сайт не указан — использую тему бренда';
+  }
   st.write='done';st.d_write='H1: «'+cfg.h1+'»';draw(st);await sleep(300);
   st.assemble='run';draw(st);
   const fr=$('#frame');fr.srcdoc=lastHtml;$('#empty').style.display='none';fr.style.display='block';
