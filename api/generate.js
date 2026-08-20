@@ -14,7 +14,7 @@ const VISION_MODEL = "anthropic/claude-haiku-4.5";
 // Бесплатный ПОЛНОРАЗМЕРНЫЙ скриншот через microlink.io (без ключа, публичный API).
 async function screenshotUrl(url) {
   const api = "https://api.microlink.io/?url=" + encodeURIComponent(url)
-    + "&screenshot=true&meta=false&screenshot.fullPage=true&viewport.width=1280&viewport.height=900&waitForTimeout=1500";
+    + "&screenshot=true&meta=false&viewport.width=1280&viewport.height=4500&waitForTimeout=1200";
   const r = await fetch(api, { signal: AbortSignal.timeout(20000) });
   const d = await r.json();
   if (d.status !== "success" || !d.data?.screenshot?.url) throw new Error("Не удалось получить скриншот");
