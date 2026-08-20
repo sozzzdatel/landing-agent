@@ -23,10 +23,7 @@ module.exports = async (req, res) => {
     if (!subdomain || !html) return res.status(400).json({ error: "subdomain и html обязательны" });
     const safePartner = (partner && partner.trim()) ? partner.trim() : "partner";
     const safeNiche = (niche && niche.trim()) ? niche.trim() : "general";
-    const base = process.env.BASE_DOMAIN || "study24.ai";
     const project = "lp-partners";
-    const alias = `${subdomain.toLowerCase().replace(/[^a-z0-9-]/g, "")}.${base}`;
-
     const dep = await vfetch("/v13/deployments?forceNew=1", {
       method: "POST",
       body: JSON.stringify({
@@ -37,9 +34,21 @@ module.exports = async (req, res) => {
       }),
     });
 
-    await vfetch(`/v2/deployments/${dep.id}/aliases`, { method: "POST", body: JSON.stringify({ alias }) });
+    // По умолчанию — готовый *.vercel.app адрес (всегда работает, без SSL-настройки).
+    // Кастомный домен подключается позже: задай BASE_DOMAIN в env + добавь домен в Vercel → Domains,
+    // тогда сюда же начнёт применяться алиас на твой домен.
+    let liveUrl = dep.url; // вида lp-partners-xxxx.vercel.app
+    if (process.env.BASE_DOMAIN) {
+      const alias = `${subdomain.toLowerCase().replace(/[^a-z0-9-]/g, "")}.${process.env.BASE_DOMAIN}`;
+      try {
+        await vfetch(`/v2/deployments/${dep.id}/aliases`, { method: "POST", body: JSON.stringify({ alias }) });
+        liveUrl = alias;
+      } catch (aliasErr) {
+        // Домен ещё не подключён/не верифицирован в Vercel — тихо остаёмся на vercel.app адресе.
+      }
+    }
 
-    return res.status(200).json({ url: alias, vercelUrl: dep.url, deploymentId: dep.id });
+    return res.status(200).json({ url: liveUrl, vercelUrl: dep.url, deploymentId: dep.id });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
