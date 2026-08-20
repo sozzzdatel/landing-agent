@@ -47,14 +47,15 @@ label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6p
 <label class="f">Сайт / канал — агент изучит</label><input class="in" id="i_url" placeholder="https://t.me/... (необязательно)">
 <label class="f">Оффер</label><select class="in" id="i_product">
 <option value="studyai">StudyAI — нейросети (RU)</option><option value="kampus">Кэмп — презентации (RU)</option>
-<option value="mystylus">MyStylus — контент (INTL)</option><option value="studybay">StudyBay — учёба (US)</option></select>
+<option value="mystylus">MyStylus — контент (INTL)</option><option value="studybay">StudyBay — учёба (US)</option>
+<option value="avtor24">Автор24 — учёба + AI (RU)</option></select>
 <label class="f">Реф-ссылка</label><input class="in" id="i_ref" value="https://studyai.one/?rid=0a9815c6bf60fb1d">
 <label class="f">Промокод</label><input class="in" id="i_promo" value="PARTNER15">
 <button class="run" id="run">▶ Запустить агента</button>
 </div>
 <div class="console"><h4>Ход работы агента</h4><div id="steps"></div>
 <div class="result" id="result"><div class="u" id="resUrl"></div>
-<label class="f" style="margin-top:0">Поддомео</label>
+<label class="f" style="margin-top:0">Поддомен</label>
 <div class="dep"><input class="in" id="i_domain" style="flex:1" placeholder="partner"><span class="suf" id="suf"></span></div>
 <button class="run" id="deployBtn" style="margin-top:12px;padding:12px;font-size:14px">🚀 Выкатить на домен</button>
 <div id="depOut" style="font-size:12px;color:var(--mut);margin-top:10px;line-height:1.5"></div></div>
@@ -104,6 +105,6 @@ async function deploy(){
  b.disabled=false;
 }
 $('#run').onclick=run;$('#deployBtn').onclick=deploy;
-$('#i_product').onchange=()=>{const m={studyai:'https://studyai.one/?rid=0a9815c6bf60fb1d',kampus:'https://kampus.ai/?rid=xxx',mystylus:'https://mystylus.ai/?rid=xxx',studybay:'https://studybay.com/?rid=xxx'};$('#i_ref').value=m[$('#i_product').value]||''};
+$('#i_product').onchange=()=>{const m={studyai:'https://studyai.one/?rid=0a9815c6bf60fb1d',kampus:'https://kampus.ai/?rid=xxx',mystylus:'https://mystylus.ai/?rid=xxx',studybay:'https://studybay.com/?rid=xxx',avtor24:'https://avtor24.ru/?ref=xxx'};$('#i_ref').value=m[$('#i_product').value]||''};
 draw({});
 </script></body></html>`;
