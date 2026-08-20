@@ -51,6 +51,7 @@ async function analyzeSiteStyle(url) {
     for (const f of fontDecls) {
       const name = f.replace(/font-family\s*:\s*/i, "").split(",")[0].replace(/['"]/g, "").trim();
       if (!name || /^(inherit|initial|unset|serif|sans-serif)$/i.test(name)) continue;
+      if (name.startsWith("var(")) continue; // это ссылка на CSS-переменную, а не реальный шрифт
       fontFreq[name] = (fontFreq[name] || 0) + 1;
     }
     const topFont = Object.entries(fontFreq).sort((a, b) => b[1] - a[1])[0];
