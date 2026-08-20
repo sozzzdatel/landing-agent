@@ -58,6 +58,7 @@ label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6p
 <label class="f" style="margin-top:0">Поддомен</label>
 <div class="dep"><input class="in" id="i_domain" style="flex:1" placeholder="partner"><span class="suf" id="suf"></span></div>
 <button class="run" id="deployBtn" style="margin-top:12px;padding:12px;font-size:14px">🚀 Выкатить на домен</button>
+<button class="run" id="downloadBtn" style="margin-top:8px;padding:12px;font-size:14px;background:var(--panel2);color:var(--txt);border:1px solid var(--line)">📦 Скачать лендинг (HTML)</button>
 <div id="depOut" style="font-size:12px;color:var(--mut);margin-top:10px;line-height:1.5"></div></div>
 </div>
 </aside>
@@ -68,7 +69,7 @@ label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6p
 </main></div>
 <script>
 const $=s=>document.querySelector(s);let cfg=null,lastHtml=null;
-const BASE="study24.ai";
+const BASE_BY_PRODUCT={studyai:'demo.study24.ai',kampus:'demo.kampus.ai',avtor24:'demo.avtor24.ru',mystylus:'demo.mystylus.ai',studybay:'demo.studybay.com'};
 const STEPS=[['perceive','Разбираю бриф'],['research','Изучаю партнёра'],['write','Пишу копирайт'],['assemble','Собираю лендинг'],['deploy','Готов к выкату']];
 function draw(st){$('#steps').innerHTML=STEPS.map((s,i)=>{const c=st[s[0]]||'wait';const ic=c==='done'?'✓':(c==='run'?'●':i+1);return '<div class="step '+c+'"><div class="ico">'+ic+'</div><div><div class="t">'+s[1]+'</div><div class="d" id="d_'+s[0]+'">'+(st['d_'+s[0]]||'')+'</div></div></div>'}).join('')}
 function sleep(m){return new Promise(r=>setTimeout(r,m))}
@@ -88,7 +89,7 @@ async function run(){
   st.assemble='done';draw(st);await sleep(300);
   st.deploy='done';st.d_deploy='Нажми «Выкатить», чтобы опубликовать';draw(st);
   const slug=(brief.partner||'lp').toLowerCase().replace(/[^a-zа-я0-9]+/gi,'-').replace(/^-|-$/g,'').slice(0,24)||'lp';
-  $('#i_domain').value=slug;$('#suf').textContent='.'+BASE;$('#pv').textContent='превью · '+cfg.brand+' / '+cfg.niche;
+  $('#i_domain').value=slug;$('#suf').textContent='.'+(BASE_BY_PRODUCT[cfg.brand]||'demo.vercel.app');$('#pv').textContent='превью · '+cfg.brand;
   $('#resUrl').textContent='Лендинг собран. Готов к публикации.';$('#result').classList.add('on');
  }catch(e){const cur=STEPS.find(s=>st[s[0]]==='run');if(cur){st[cur[0]]='wait';st['d_'+cur[0]]='Ошибка: '+e.message}draw(st)}
  $('#run').disabled=false;
@@ -104,7 +105,17 @@ async function deploy(){
  }catch(e){out.innerHTML='⚠️ '+e.message+'<br>Если VERCEL_TOKEN не задан — добавь его в env проекта.'}
  b.disabled=false;
 }
-$('#run').onclick=run;$('#deployBtn').onclick=deploy;
+function downloadHtml(){
+ if(!lastHtml){return;}
+ const slug=(cfg&&cfg.brand)||'landing';
+ const blob=new Blob([lastHtml],{type:'text/html'});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');
+ a.href=url;a.download='lending-'+slug+'.html';
+ document.body.appendChild(a);a.click();document.body.removeChild(a);
+ URL.revokeObjectURL(url);
+}
+$('#run').onclick=run;$('#deployBtn').onclick=deploy;$('#downloadBtn').onclick=downloadHtml;
 $('#i_product').onchange=()=>{const m={studyai:'https://studyai.one/?rid=0a9815c6bf60fb1d',kampus:'https://kampus.ai/?rid=xxx',mystylus:'https://mystylus.ai/?rid=xxx',studybay:'https://studybay.com/?rid=xxx',avtor24:'https://avtor24.ru/?ref=xxx'};$('#i_ref').value=m[$('#i_product').value]||''};
 draw({});
 </script></body></html>`;
