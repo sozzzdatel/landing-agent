@@ -52,7 +52,6 @@ async function analyzeWithVision(imageUrl) {
   });
   const d = await r.json();
   const text = d.choices?.[0]?.message?.content || "";
-  if (!text) { const err = new Error("empty vision response: " + JSON.stringify(d).slice(0, 300)); throw err; }
   const clean = text.replace(/```json/gi, "").replace(/```/g, "");
   const s = clean.indexOf("{"), e = clean.lastIndexOf("}");
   return JSON.parse(clean.slice(s, e + 1));
@@ -94,10 +93,7 @@ async function analyzeSite(url) {
       const vis = await analyzeWithVision(shot);
       return { ...vis, method: "vision", screenshot: shot };
     } catch (e) {
-      try {
-        const css = await analyzeSiteCss(url);
-        return { ...(css || {}), visionError: e.message }; // временная диагностика
-      } catch (_) { return { error: e.message }; }
+      try { return await analyzeSiteCss(url); } catch (_) { return { error: e.message }; }
     }
   }
   try { return await analyzeSiteCss(url); } catch (e) { return { error: e.message }; }
