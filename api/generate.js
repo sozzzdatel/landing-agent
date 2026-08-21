@@ -9,7 +9,8 @@
 const { BRANDS, renderLanding, configFromPreset } = require("../lib/engine");
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const VISION_MODEL = "anthropic/claude-haiku-4.5";
+const VISION_MODEL = "anthropic/claude-haiku-4.5"; // дешёвый анализ цветов/стиля
+const LAYOUT_MODEL = "anthropic/claude-sonnet-5"; // сильная модель для реальной композиции вёрстки
 
 // Бесплатный ПОЛНОРАЗМЕРНЫЙ скриншот через microlink.io (без ключа, публичный API).
 async function screenshotUrl(url) {
@@ -131,9 +132,9 @@ ${JSON.stringify(content)}`;
   const r = await fetch(OPENROUTER_URL, {
     method: "POST",
     headers: { Authorization: "Bearer " + process.env.OPENROUTER_KEY, "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(45000),
+    signal: AbortSignal.timeout(55000),
     body: JSON.stringify({
-      model: VISION_MODEL,
+      model: LAYOUT_MODEL,
       messages: [{
         role: "user",
         content: [
