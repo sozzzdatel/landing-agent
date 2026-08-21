@@ -234,8 +234,8 @@ function makeZip(files){
 }
 function splitHtmlForZip(html){
  let css='',js='',out=html;
- out=out.replace(/<style>([\s\S]*?)<\/style>/gi,(m,c)=>{css+=c+'\n';return '<link rel="stylesheet" href="styles.css">'});
- out=out.replace(/<script>([\s\S]*?)<\/script>/gi,(m,c)=>{js+=c+'\n';return '<script src="script.js"><'+'/script>'});
+ out=out.replace(/<style>([\\s\\S]*?)<\\/style>/gi,(m,c)=>{css+=c+'\\n';return '<link rel="stylesheet" href="styles.css">'});
+ out=out.replace(/<script>([\\s\\S]*?)<\\/script>/gi,(m,c)=>{js+=c+'\\n';return '<script src="script.js"><'+'/script>'});
  return {html:out,css,js};
 }
 function downloadZip(){
