@@ -51,7 +51,13 @@ label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6p
 <option value="avtor24">Автор24 — учёба + AI (RU)</option></select>
 <label class="f">Реф-ссылка</label><input class="in" id="i_ref" value="https://studyai.one/?rid=0a9815c6bf60fb1d">
 <label class="f">Промокод</label><input class="in" id="i_promo" value="PARTNER15">
+<label class="f">Пожелания (необязательно)</label><textarea class="in" id="i_wishes" rows="2" style="resize:vertical" placeholder="Например: сделай акцент на скорости, упомяни студентов техвузов"></textarea>
+<label class="f">Что НЕ писать (необязательно)</label><textarea class="in" id="i_exclusions" rows="2" style="resize:vertical" placeholder="Например: не упоминать конкурентов, не писать про цену"></textarea>
 <button class="run" id="run">▶ Запустить агента</button>
+<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+<label class="f" style="margin-top:0">Или загрузи готовый HTML</label>
+<input type="file" id="i_upload" accept=".html,text/html" class="in" style="padding:8px 13px">
+</div>
 </div>
 <div class="console"><h4>Ход работы агента</h4><div id="steps"></div>
 <div class="result" id="result"><div class="u" id="resUrl"></div>
@@ -59,7 +65,13 @@ label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6p
 <div class="dep"><input class="in" id="i_domain" style="flex:1" placeholder="partner"><span class="suf" id="suf"></span></div>
 <button class="run" id="deployBtn" style="margin-top:12px;padding:12px;font-size:14px">🚀 Выкатить на домен</button>
 <button class="run" id="downloadBtn" style="margin-top:8px;padding:12px;font-size:14px;background:var(--panel2);color:var(--txt);border:1px solid var(--line)">📦 Скачать лендинг (HTML)</button>
-<div id="depOut" style="font-size:12px;color:var(--mut);margin-top:10px;line-height:1.5"></div></div>
+<div id="depOut" style="font-size:12px;color:var(--mut);margin-top:10px;line-height:1.5"></div>
+<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">
+<label class="f" style="margin-top:0">Внести правку словами</label>
+<textarea class="in" id="i_edit" rows="2" style="resize:vertical" placeholder="Например: сделай кнопку зелёной, убери блок FAQ, подвинь картинку влево"></textarea>
+<button class="run" id="editBtn" style="margin-top:8px;padding:11px;font-size:13px">✏️ Применить правку</button>
+<div id="editOut" style="font-size:12px;color:var(--mut);margin-top:8px;line-height:1.5"></div>
+</div></div>
 </div>
 </aside>
 <main class="stage">
@@ -74,7 +86,7 @@ const STEPS=[['perceive','Разбираю бриф'],['research','Изучаю 
 function draw(st){$('#steps').innerHTML=STEPS.map((s,i)=>{const c=st[s[0]]||'wait';const ic=c==='done'?'✓':(c==='run'?'●':i+1);return '<div class="step '+c+'"><div class="ico">'+ic+'</div><div><div class="t">'+s[1]+'</div><div class="d" id="d_'+s[0]+'">'+(st['d_'+s[0]]||'')+'</div></div></div>'}).join('')}
 function sleep(m){return new Promise(r=>setTimeout(r,m))}
 async function run(){
- const brief={partner:$('#i_partner').value.trim(),url:$('#i_url').value.trim(),product:$('#i_product').value,ref:$('#i_ref').value.trim(),promo:$('#i_promo').value.trim()};
+ const brief={partner:$('#i_partner').value.trim(),url:$('#i_url').value.trim(),product:$('#i_product').value,ref:$('#i_ref').value.trim(),promo:$('#i_promo').value.trim(),wishes:$('#i_wishes').value.trim(),exclusions:$('#i_exclusions').value.trim()};
  $('#run').disabled=true;$('#result').classList.remove('on');const st={};draw(st);
  try{
   st.perceive='done';st.d_perceive=(brief.partner||'партнёр')+' · '+brief.product;draw(st);await sleep(300);
@@ -94,7 +106,6 @@ if(!r.ok||data.error){
 }
 
 cfg=data.config;lastHtml=data.html;
-  cfg=data.config;lastHtml=data.html;
   st.research='done';
   if(data.siteAnalysis&&(data.siteAnalysis.acc||data.siteAnalysis.acc2)){
     const m=data.siteAnalysis.method==='vision'?'Посмотрел на сайт':'Прочитал код сайта';
@@ -137,7 +148,37 @@ function downloadHtml(){
  document.body.appendChild(a);a.click();document.body.removeChild(a);
  URL.revokeObjectURL(url);
 }
+function uploadHtml(e){
+ const file=e.target.files&&e.target.files[0];if(!file)return;
+ const reader=new FileReader();
+ reader.onload=()=>{
+  lastHtml=reader.result;cfg=cfg||{brand:'custom',niche:'general'};
+  const fr=$('#frame');fr.srcdoc=lastHtml;$('#empty').style.display='none';fr.style.display='block';
+  fr.onload=()=>{try{fr.contentWindow.scrollTo(0,0)}catch(_){}};
+  $('#pv').textContent='загруженный HTML: '+file.name;
+  $('#resUrl').textContent='Загружен свой HTML. Можно вносить правки, скачать или выкатить.';
+  $('#result').classList.add('on');
+ };
+ reader.readAsText(file);
+}
+async function applyEdit(){
+ if(!lastHtml){$('#editOut').textContent='Сначала запусти агента или загрузи HTML.';return;}
+ const instruction=$('#i_edit').value.trim();if(!instruction)return;
+ const btn=$('#editBtn'),out=$('#editOut');btn.disabled=true;out.textContent='Вношу правку…';
+ try{
+  const r=await fetch('/api/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({html:lastHtml,instruction})});
+  const raw=await r.text();let d;try{d=JSON.parse(raw)}catch(_){throw new Error(raw||('HTTP '+r.status))}
+  if(!r.ok||d.error)throw new Error(d.error||('HTTP '+r.status));
+  lastHtml=d.html;
+  const fr=$('#frame');fr.srcdoc=lastHtml;
+  fr.onload=()=>{try{fr.contentWindow.scrollTo(0,0)}catch(_){}};
+  out.textContent='✅ Правка применена.';
+  $('#i_edit').value='';
+ }catch(e){out.textContent='⚠️ '+e.message}
+ btn.disabled=false;
+}
 $('#run').onclick=run;$('#deployBtn').onclick=deploy;$('#downloadBtn').onclick=downloadHtml;
+$('#i_upload').onchange=uploadHtml;$('#editBtn').onclick=applyEdit;
 $('#i_product').onchange=()=>{const m={studyai:'https://studyai.one/?rid=0a9815c6bf60fb1d',kampus:'https://kampus.ai/?rid=xxx',mystylus:'https://mystylus.ai/?rid=xxx',studybay:'https://studybay.com/?rid=xxx',avtor24:'https://avtor24.ru/?ref=xxx'};$('#i_ref').value=m[$('#i_product').value]||''};
 draw({});
 </script></body></html>`;
