@@ -44,7 +44,9 @@ label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6p
 <div class="hd"><div class="badge">◆</div><div><b>Landing Agent</b><div class="sub">бриф → живой лендинг за минуту</div></div></div>
 <div class="form">
 <label class="f">Партнёр (имя / канал)</label><input class="in" id="i_partner" placeholder="Академия контента Ани П.">
-<label class="f">Сайт / канал — агент изучит</label><input class="in" id="i_url" placeholder="https://t.me/... (необязательно)">
+<label class="f">Логотип (необязательно)</label><input type="file" id="i_logo" accept="image/*" class="in" style="padding:8px 13px"><div id="logoStatus" style="font-size:11px;color:var(--mut);margin-top:4px"></div>
+<label class="f">Сайт / канал — агент изучит (цвета и стиль)</label><input class="in" id="i_url" placeholder="https://t.me/... (необязательно)">
+<label class="f">Реф. структуры (необязательно, если отличается от первого)</label><input class="in" id="i_url2" placeholder="можно взять композицию с другого сайта">
 <label class="f">Оффер</label><select class="in" id="i_product">
 <option value="studyai">StudyAI — нейросети (RU)</option><option value="kampus">Кэмп — презентации (RU)</option>
 <option value="mystylus">MyStylus — контент (INTL)</option><option value="studybay">StudyBay — учёба (US)</option>
@@ -65,14 +67,17 @@ label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6p
 <div class="dep"><input class="in" id="i_domain" style="flex:1" placeholder="partner"><span class="suf" id="suf"></span></div>
 <button class="run" id="deployBtn" style="margin-top:12px;padding:12px;font-size:14px">🚀 Выкатить на домен</button>
 <button class="run" id="downloadBtn" style="margin-top:8px;padding:12px;font-size:14px;background:var(--panel2);color:var(--txt);border:1px solid var(--line)">📦 Скачать лендинг (HTML)</button>
+<button class="run" id="zipBtn" style="margin-top:8px;padding:12px;font-size:14px;background:var(--panel2);color:var(--txt);border:1px solid var(--line)">🗂 Скачать .zip (файлы отдельно)</button>
 <div id="depOut" style="font-size:12px;color:var(--mut);margin-top:10px;line-height:1.5"></div>
 <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">
 <label class="f" style="margin-top:0">Внести правку словами</label>
 <textarea class="in" id="i_edit" rows="2" style="resize:vertical" placeholder="Например: сделай кнопку зелёной, убери блок FAQ, подвинь картинку влево"></textarea>
 <button class="run" id="editBtn" style="margin-top:8px;padding:11px;font-size:13px">✏️ Применить правку</button>
+<button class="run" id="undoBtn" disabled style="margin-top:8px;padding:9px;font-size:12px;background:var(--panel2);color:var(--txt);border:1px solid var(--line)">↩ Отменить правку</button>
 <div id="editOut" style="font-size:12px;color:var(--mut);margin-top:8px;line-height:1.5"></div>
 </div></div>
 </div>
+<div class="console" style="flex:0"><h4>📚 Библиотека лендингов</h4><div id="libList"></div></div>
 </aside>
 <main class="stage">
 <div class="stbar"><span style="color:#fff;font-weight:600">Превью</span><span class="u" id="pv">лендинг появится здесь</span></div>
@@ -80,13 +85,13 @@ label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6p
 <iframe id="frame"></iframe>
 </main></div>
 <script>
-const $=s=>document.querySelector(s);let cfg=null,lastHtml=null;
+const $=s=>document.querySelector(s);let cfg=null,lastHtml=null,logoDataUrl=null,editHistory=[];
 const BASE_BY_PRODUCT={studyai:'demo.study24.ai',kampus:'demo.kampus.ai',avtor24:'demo.avtor24.ru',mystylus:'demo.mystylus.ai',studybay:'demo.studybay.com'};
 const STEPS=[['perceive','Разбираю бриф'],['research','Изучаю партнёра'],['write','Пишу копирайт'],['assemble','Собираю лендинг'],['deploy','Готов к выкату']];
 function draw(st){$('#steps').innerHTML=STEPS.map((s,i)=>{const c=st[s[0]]||'wait';const ic=c==='done'?'✓':(c==='run'?'●':i+1);return '<div class="step '+c+'"><div class="ico">'+ic+'</div><div><div class="t">'+s[1]+'</div><div class="d" id="d_'+s[0]+'">'+(st['d_'+s[0]]||'')+'</div></div></div>'}).join('')}
 function sleep(m){return new Promise(r=>setTimeout(r,m))}
 async function run(){
- const brief={partner:$('#i_partner').value.trim(),url:$('#i_url').value.trim(),product:$('#i_product').value,ref:$('#i_ref').value.trim(),promo:$('#i_promo').value.trim(),wishes:$('#i_wishes').value.trim(),exclusions:$('#i_exclusions').value.trim()};
+ const brief={partner:$('#i_partner').value.trim(),url:$('#i_url').value.trim(),url2:$('#i_url2').value.trim(),product:$('#i_product').value,ref:$('#i_ref').value.trim(),promo:$('#i_promo').value.trim(),wishes:$('#i_wishes').value.trim(),exclusions:$('#i_exclusions').value.trim(),logoDataUrl:logoDataUrl||undefined};
  $('#run').disabled=true;$('#result').classList.remove('on');const st={};draw(st);
  try{
   st.perceive='done';st.d_perceive=(brief.partner||'партнёр')+' · '+brief.product;draw(st);await sleep(300);
@@ -124,6 +129,8 @@ cfg=data.config;lastHtml=data.html;
   const slug=(brief.partner||'lp').toLowerCase().replace(/[^a-zа-я0-9]+/gi,'-').replace(/^-|-$/g,'').slice(0,24)||'lp';
   $('#i_domain').value=slug;$('#suf').textContent='.'+(BASE_BY_PRODUCT[cfg.brand]||'demo.vercel.app');$('#pv').textContent='превью · '+cfg.brand;
   $('#resUrl').textContent='Лендинг собран. Готов к публикации.';$('#result').classList.add('on');
+  editHistory=[];$('#undoBtn').disabled=true;
+  libAdd({id:Date.now()+'-'+Math.random().toString(36).slice(2),partner:brief.partner,product:brief.product,ts:Date.now(),html:lastHtml,cfg:cfg});
  }catch(e){const cur=STEPS.find(s=>st[s[0]]==='run');if(cur){st[cur[0]]='wait';st['d_'+cur[0]]='Ошибка: '+e.message}draw(st)}
  $('#run').disabled=false;
 }
@@ -169,6 +176,7 @@ async function applyEdit(){
   const r=await fetch('/api/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({html:lastHtml,instruction})});
   const raw=await r.text();let d;try{d=JSON.parse(raw)}catch(_){throw new Error(raw||('HTTP '+r.status))}
   if(!r.ok||d.error)throw new Error(d.error||('HTTP '+r.status));
+  editHistory.push(lastHtml);if(editHistory.length>10)editHistory.shift();$('#undoBtn').disabled=false;
   lastHtml=d.html;
   const fr=$('#frame');fr.srcdoc=lastHtml;
   fr.onload=()=>{try{fr.contentWindow.scrollTo(0,0)}catch(_){}};
@@ -177,8 +185,96 @@ async function applyEdit(){
  }catch(e){out.textContent='⚠️ '+e.message}
  btn.disabled=false;
 }
+function undoEdit(){
+ if(!editHistory.length)return;
+ lastHtml=editHistory.pop();
+ const fr=$('#frame');fr.srcdoc=lastHtml;
+ fr.onload=()=>{try{fr.contentWindow.scrollTo(0,0)}catch(_){}};
+ $('#undoBtn').disabled=editHistory.length===0;
+ $('#editOut').textContent='↩ Правка отменена.';
+}
+function onLogoUpload(e){
+ const file=e.target.files&&e.target.files[0];if(!file)return;
+ const reader=new FileReader();
+ reader.onload=()=>{logoDataUrl=reader.result;$('#logoStatus').textContent='Логотип загружен: '+file.name};
+ reader.readAsDataURL(file);
+}
+// --- Минимальный ZIP-архиватор (без сжатия, метод store) — без внешних зависимостей ---
+function crc32(buf){
+ if(!crc32.table){const t=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++){c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1)}t[n]=c}crc32.table=t}
+ let crc=0^(-1);
+ for(let i=0;i<buf.length;i++){crc=(crc>>>8)^crc32.table[(crc^buf[i])&0xFF]}
+ return (crc^(-1))>>>0;
+}
+function makeZip(files){
+ const enc=new TextEncoder();let localParts=[],centralParts=[],offset=0;
+ for(const f of files){
+  const nameBytes=enc.encode(f.name),data=(typeof f.data==='string')?enc.encode(f.data):f.data;
+  const crc=crc32(data),size=data.length;
+  const local=new Uint8Array(30+nameBytes.length+size),dv=new DataView(local.buffer);
+  dv.setUint32(0,0x04034b50,true);dv.setUint16(4,20,true);dv.setUint16(6,0,true);dv.setUint16(8,0,true);
+  dv.setUint16(10,0,true);dv.setUint16(12,0x21,true);dv.setUint32(14,crc,true);dv.setUint32(18,size,true);
+  dv.setUint32(22,size,true);dv.setUint16(26,nameBytes.length,true);dv.setUint16(28,0,true);
+  local.set(nameBytes,30);local.set(data,30+nameBytes.length);localParts.push(local);
+  const central=new Uint8Array(46+nameBytes.length),cdv=new DataView(central.buffer);
+  cdv.setUint32(0,0x02014b50,true);cdv.setUint16(4,20,true);cdv.setUint16(6,20,true);cdv.setUint16(8,0,true);
+  cdv.setUint16(10,0,true);cdv.setUint16(12,0,true);cdv.setUint16(14,0x21,true);cdv.setUint32(16,crc,true);
+  cdv.setUint32(20,size,true);cdv.setUint32(24,size,true);cdv.setUint16(28,nameBytes.length,true);
+  cdv.setUint16(30,0,true);cdv.setUint16(32,0,true);cdv.setUint16(34,0,true);cdv.setUint16(36,0,true);
+  cdv.setUint32(38,0,true);cdv.setUint32(42,offset,true);central.set(nameBytes,46);centralParts.push(central);
+  offset+=local.length;
+ }
+ const centralSize=centralParts.reduce((a,b)=>a+b.length,0),centralOffset=offset;
+ const end=new Uint8Array(22),edv=new DataView(end.buffer);
+ edv.setUint32(0,0x06054b50,true);edv.setUint16(8,files.length,true);edv.setUint16(10,files.length,true);
+ edv.setUint32(12,centralSize,true);edv.setUint32(16,centralOffset,true);
+ const all=[...localParts,...centralParts,end],total=all.reduce((a,b)=>a+b.length,0),out=new Uint8Array(total);
+ let p=0;for(const part of all){out.set(part,p);p+=part.length}
+ return out;
+}
+function splitHtmlForZip(html){
+ let css='',js='',out=html;
+ out=out.replace(/<style>([\s\S]*?)<\/style>/gi,(m,c)=>{css+=c+'\n';return '<link rel="stylesheet" href="styles.css">'});
+ out=out.replace(/<script>([\s\S]*?)<\/script>/gi,(m,c)=>{js+=c+'\n';return '<script src="script.js"></script>'});
+ return {html:out,css,js};
+}
+function downloadZip(){
+ if(!lastHtml)return;
+ const {html,css,js}=splitHtmlForZip(lastHtml);
+ const zipBytes=makeZip([{name:'index.html',data:html},{name:'styles.css',data:css||'/* стили */'},{name:'script.js',data:js||'// скрипты'}]);
+ const blob=new Blob([zipBytes],{type:'application/zip'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='lending-'+((cfg&&cfg.brand)||'landing')+'.zip';
+ document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+// --- Библиотека лендингов (localStorage, до 20 последних) ---
+function libLoad(){try{return JSON.parse(localStorage.getItem('landing_agent_library')||'[]')}catch(_){return []}}
+function libSaveAll(list){try{localStorage.setItem('landing_agent_library',JSON.stringify(list.slice(0,20)))}catch(_){}}
+function libAdd(entry){const list=libLoad();list.unshift(entry);libSaveAll(list);renderLibrary()}
+function libDelete(id){libSaveAll(libLoad().filter(e=>e.id!==id));renderLibrary()}
+function renderLibrary(){
+ const list=libLoad(),el=$('#libList');
+ if(!list.length){el.innerHTML='<div style="color:var(--mut);font-size:12px">Пока пусто — здесь появятся собранные лендинги.</div>';return}
+ el.innerHTML=list.map(e=>'<div style="padding:10px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px">'+
+  '<div style="font-size:13px;font-weight:600">'+(e.partner||'Без имени')+'</div>'+
+  '<div style="font-size:11px;color:var(--mut)">'+e.product+' · '+new Date(e.ts).toLocaleString('ru')+'</div>'+
+  '<div style="display:flex;gap:6px;margin-top:6px">'+
+  '<button data-id="'+e.id+'" class="lib-open" style="flex:1;padding:6px;font-size:11px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--txt)">Открыть</button>'+
+  '<button data-id="'+e.id+'" class="lib-del" style="padding:6px 10px;font-size:11px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:#ff6b6b">✕</button></div></div>').join('');
+ el.querySelectorAll('.lib-open').forEach(btn=>btn.onclick=()=>{
+  const entry=libLoad().find(e=>e.id===btn.dataset.id);if(!entry)return;
+  cfg=entry.cfg;lastHtml=entry.html;editHistory=[];$('#undoBtn').disabled=true;
+  const fr=$('#frame');fr.srcdoc=lastHtml;$('#empty').style.display='none';fr.style.display='block';
+  fr.onload=()=>{try{fr.contentWindow.scrollTo(0,0)}catch(_){}};
+  $('#pv').textContent='из библиотеки: '+(entry.partner||entry.product);
+  $('#resUrl').textContent='Загружено из библиотеки.';$('#result').classList.add('on');
+ });
+ el.querySelectorAll('.lib-del').forEach(btn=>btn.onclick=()=>libDelete(btn.dataset.id));
+}
 $('#run').onclick=run;$('#deployBtn').onclick=deploy;$('#downloadBtn').onclick=downloadHtml;
 $('#i_upload').onchange=uploadHtml;$('#editBtn').onclick=applyEdit;
+$('#i_logo').onchange=onLogoUpload;$('#zipBtn').onclick=downloadZip;$('#undoBtn').onclick=undoEdit;
+renderLibrary();
 $('#i_product').onchange=()=>{const m={studyai:'https://studyai.one/?rid=0a9815c6bf60fb1d',kampus:'https://kampus.ai/?rid=xxx',mystylus:'https://mystylus.ai/?rid=xxx',studybay:'https://studybay.com/?rid=xxx',avtor24:'https://avtor24.ru/?ref=xxx'};$('#i_ref').value=m[$('#i_product').value]||''};
 draw({});
 </script></body></html>`;
