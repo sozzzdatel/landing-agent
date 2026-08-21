@@ -173,6 +173,8 @@ ${plan}
 - Включи хотя бы один явный CTA (кнопка со ссылкой ${content.ref}).
 - Каждая секция — <section style="padding:64px 0;background:..."><div style="max-width:1100px;margin:0 auto;padding:0 22px">...</div></section>.
 - Верни ТОЛЬКО HTML-фрагмент. Без markdown, без \`\`\`, без <html>/<head>/<body>/<script>, без пояснений.
+${content.wishes ? `\nПОЖЕЛАНИЯ ОТ ЗАКАЗЧИКА (обязательно учти): ${content.wishes}` : ""}
+${content.exclusions ? `\nЗАПРЕЩЕНО упоминать/писать (строго исключи из любого текста и визуала): ${content.exclusions}` : ""}
 
 JSON контента бренда:
 ${JSON.stringify(content)}`;
@@ -239,6 +241,7 @@ module.exports = async (req, res) => {
             h1: config.h1, sub: config.sub, cta: config.cta,
             toolsTitle: config.toolsTitle, toolsDesc: config.toolsDesc, tools: config.tools,
             stats: config.stats, steps: config.steps, faq: config.faq, finalTitle: config.finalTitle,
+            wishes: brief.wishes || "", exclusions: brief.exclusions || "",
           });
         } catch (_) { /* остаёмся на блочном движке */ }
       }
