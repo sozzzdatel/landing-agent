@@ -5,6 +5,9 @@
   "functions": {
     "api/generate.js": {
       "maxDuration": 300
+    },
+    "api/edit.js": {
+      "maxDuration": 60
     }
   }
 }
