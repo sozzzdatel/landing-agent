@@ -28,11 +28,15 @@ async function analyzeWithVision(imageUrl) {
 {
   "acc":"#hex основной фирменный цвет кнопок/акцентов",
   "acc2":"#hex второй акцентный цвет",
-  "bg":"#hex ФОН СТРАНИЦЫ — это важно: если фон не белый (бежевый/кремовый/тёмный/цветной) — обязательно укажи его настоящий hex, не пиши белый по умолчанию",
-  "radius":"sharp или rounded — острые или скруглённые углы",
-  "heroAlign":"center или left — как выровнен текст в первом экране",
-  "featureColumns": 2 или 3 или 4 — сколько колонок в сетке карточек преимуществ (если есть),
-  "density":"compact или spacious — насколько плотно расположены блоки",
+  "bg":"#hex ФОН СТРАНИЦЫ — если не белый, обязательно укажи настоящий hex",
+  "bgGradient": true или false — фон это градиент из 2 цветов,
+  "bg2":"#hex второй цвет градиента фона, если bgGradient true",
+  "radius":"sharp или rounded",
+  "heroAlign":"center или left",
+  "heroHasVisual": true или false — есть ли в первом экране картинка/иллюстрация рядом с текстом,
+  "heroVisualPrompt":"если heroHasVisual true — короткое описание НА АНГЛИЙСКОМ для генерации похожей картинки нейросетью, 6-10 слов, в стиле референса (напр. '3d abstract purple gradient product mockup neon accents floating shapes')",
+  "featureColumns": 2 или 3 или 4,
+  "density":"compact или spacious",
   "blocksOrder": ["массив из подмножества и в том порядке, как реально идут на странице ПОСЛЕ первого экрана: stats, logos, features, steps, testimonials, faq, pricing, cta — включай только то, что реально видишь, в реальном порядке"]
 }`;
   const r = await fetch(OPENROUTER_URL, {
@@ -112,6 +116,10 @@ module.exports = async (req, res) => {
       if (site.acc) config.styleOverride.acc = site.acc;
       if (site.acc2) config.styleOverride.acc2 = site.acc2;
       if (site.bg && !/^#(ffffff|fff)$/i.test(site.bg)) config.styleOverride.bg = site.bg;
+      if (site.bgGradient && site.bg2) config.styleOverride.bg2 = site.bg2;
+      if (site.heroHasVisual && site.heroVisualPrompt) {
+        config.heroImage = "https://image.pollinations.ai/prompt/" + encodeURIComponent(site.heroVisualPrompt) + "?width=800&height=800&nologo=true";
+      }
       if (site.radius === "sharp") config.styleOverride.radius = "6px";
       if (site.radius === "rounded") config.styleOverride.radius = "22px";
       if (site.heroAlign === "center") config.styleOverride.heroAlign = "center";
