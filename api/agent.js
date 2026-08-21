@@ -94,6 +94,7 @@ async function run(){
   st.write='done';st.d_write='H1: «'+cfg.h1+'»';draw(st);await sleep(300);
   st.assemble='run';draw(st);
   const fr=$('#frame');fr.srcdoc=lastHtml;$('#empty').style.display='none';fr.style.display='block';
+  fr.onload=()=>{try{fr.contentWindow.scrollTo(0,0)}catch(_){}};
   st.assemble='done';draw(st);await sleep(300);
   st.deploy='done';st.d_deploy='Нажми «Выкатить», чтобы опубликовать';draw(st);
   const slug=(brief.partner||'lp').toLowerCase().replace(/[^a-zа-я0-9]+/gi,'-').replace(/^-|-$/g,'').slice(0,24)||'lp';
