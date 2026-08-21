@@ -79,8 +79,21 @@ async function run(){
  try{
   st.perceive='done';st.d_perceive=(brief.partner||'партнёр')+' · '+brief.product;draw(st);await sleep(300);
   st.research='run';draw(st);
-  const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(brief)});
-  const data=await r.json();if(data.error)throw new Error(data.error);
+const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(brief)});
+const raw=await r.text();
+let data;
+
+try{
+  data=JSON.parse(raw);
+}catch(_){
+  throw new Error(raw||('HTTP '+r.status));
+}
+
+if(!r.ok||data.error){
+  throw new Error(data.error||('HTTP '+r.status));
+}
+
+cfg=data.config;lastHtml=data.html;
   cfg=data.config;lastHtml=data.html;
   st.research='done';
   if(data.siteAnalysis&&(data.siteAnalysis.acc||data.siteAnalysis.acc2)){
