@@ -15,7 +15,7 @@ const LAYOUT_MODEL = "anthropic/claude-sonnet-5"; // сильная модель
 // Бесплатный ПОЛНОРАЗМЕРНЫЙ скриншот через microlink.io (без ключа, публичный API).
 async function screenshotUrl(url) {
   const api = "https://api.microlink.io/?url=" + encodeURIComponent(url)
-    + "&screenshot=true&meta=false&viewport.width=800&viewport.height=2400&waitForTimeout=1200";
+    + "&screenshot=true&meta=false&viewport.width=1440&viewport.height=3200&waitForTimeout=1500";
   const r = await fetch(api, { signal: AbortSignal.timeout(20000) });
   const d = await r.json();
   if (d.status !== "success" || !d.data?.screenshot?.url) throw new Error("Не удалось получить скриншот");
