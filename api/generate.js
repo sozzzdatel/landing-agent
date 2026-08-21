@@ -12,6 +12,27 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const VISION_MODEL = "anthropic/claude-haiku-4.5"; // дешёвый анализ цветов/стиля
 const LAYOUT_MODEL = "anthropic/claude-sonnet-5"; // сильная модель для реальной композиции вёрстки
 
+async function safeJson(r, label = "API") {
+  const raw = await r.text();
+
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch (_) {
+    throw new Error(`${label} вернул не JSON: ${raw.slice(0, 300)}`);
+  }
+
+  if (!r.ok) {
+    throw new Error(
+      data?.error?.message ||
+      data?.error ||
+      `${label} HTTP ${r.status}`
+    );
+  }
+
+  return data;
+}
+
 // Бесплатный ПОЛНОРАЗМЕРНЫЙ скриншот через microlink.io (без ключа, публичный API).
 async function screenshotUrl(url) {
   const api = "https://api.microlink.io/?url=" + encodeURIComponent(url)
