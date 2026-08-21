@@ -214,6 +214,7 @@ module.exports = async (req, res) => {
   try {
     const brief = req.body || {};
     const config = configFromPreset(brief);
+    if (brief.logoDataUrl) config.logoDataUrl = brief.logoDataUrl;
 
     const site = await analyzeSite(brief.url);
     if (site && (site.acc || site.acc2)) {
@@ -232,11 +233,18 @@ module.exports = async (req, res) => {
       if (site.density === "spacious") config.styleOverride.spacious = true;
       if (Array.isArray(site.blocksOrder) && site.blocksOrder.length) config.styleOverride.blocksOrder = site.blocksOrder;
 
+      // Если задан ВТОРОЙ референс (структура) — берём скриншот именно с него для композиции,
+      // а цвета/стиль остаются с первого референса (site.screenshot по умолчанию).
+      let structureScreenshot = site.screenshot;
+      if (brief.url2 && brief.url2.trim()) {
+        try { structureScreenshot = await screenshotUrl(brief.url2.trim()); } catch (_) { /* остаёмся на первом референсе */ }
+      }
+
       // Второй проход: пробуем сгенерировать реальную кастомную вёрстку под референс.
       // Если не получится (таймаут/ошибка/мусор) — тихо остаёмся на надёжном блочном движке.
-      if (process.env.OPENROUTER_KEY && site.screenshot) {
+      if (process.env.OPENROUTER_KEY && structureScreenshot) {
         try {
-          config.customMiddleHtml = await generateCustomBody(site.screenshot, {
+          config.customMiddleHtml = await generateCustomBody(structureScreenshot, {
             ref: config.ref, promo: config.promo, discount: config.discount,
             h1: config.h1, sub: config.sub, cta: config.cta,
             toolsTitle: config.toolsTitle, toolsDesc: config.toolsDesc, tools: config.tools,
