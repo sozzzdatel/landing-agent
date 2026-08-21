@@ -90,6 +90,48 @@ async function analyzeSiteCss(url) {
   return { acc: top[0], acc2: top[1] || top[0], method: "css" };
 }
 
+// Второй проход: модель САМА пишет HTML для середины лендинга, максимально повторяя
+// композицию референса (карточки людей с фото-заглушками, таблетки-фильтры и т.д.),
+// используя реальный текст бренда. Если не получится — тихий откат на блочный движок.
+async function generateCustomBody(imageUrl, content) {
+  const prompt = `Ты верстальщик. Вот скриншот лендинга-референса и текстовый контент бренда (JSON ниже).
+Напиши HTML для СЕРЕДИНЫ страницы (между hero и футером), максимально повторяя типы блоков, композицию и стиль референса.
+
+ПРАВИЛА:
+- Если на референсе карточки людей/экспертов с фото — используй фото https://i.pravatar.cc/300?img=N, где N — разное число от 1 до 70 для каждой карточки.
+- Если карточки функций/фич — можно использовать emoji как иконки.
+- Если есть таблетки-фильтры/теги — сделай их (просто визуально, без реальной логики фильтрации).
+- Используй ТОЛЬКО эти цвета через CSS-переменные, не выдумывай новых hex: var(--acc), var(--acc2), var(--bg), var(--soft), var(--line), var(--ink), var(--mut). Радиус скруглений: var(--radius).
+- Используй РЕАЛЬНЫЙ текст бренда из JSON ниже (заголовки, буллеты, вопросы) — не выдумывай другой оффер, только оформляй его в стиле референса.
+- Всегда включи блок с призывом к действию (кнопка со ссылкой ${content.ref}) хотя бы один раз.
+- Каждый крупный блок — обычный <section><div class="wrap">...</div></section>.
+- Верни ТОЛЬКО HTML-фрагмент. Без markdown, без \`\`\`, без <html>/<head>/<body>/<script>, без пояснений.
+
+JSON контента:
+${JSON.stringify(content)}`;
+  const r = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: { Authorization: "Bearer " + process.env.OPENROUTER_KEY, "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(30000),
+    body: JSON.stringify({
+      model: VISION_MODEL,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: imageUrl } },
+        ],
+      }],
+      max_tokens: 3000,
+    }),
+  });
+  const d = await r.json();
+  let html = d.choices?.[0]?.message?.content || "";
+  html = html.replace(/```html/gi, "").replace(/```/g, "").trim();
+  if (!html || html.length < 100 || /<script/i.test(html)) throw new Error("Пустой или небезопасный ответ");
+  return html;
+}
+
 async function analyzeSite(url) {
   if (!url) return null;
   if (process.env.OPENROUTER_KEY) {
@@ -126,6 +168,19 @@ module.exports = async (req, res) => {
       if ([2, 3, 4].includes(site.featureColumns)) config.styleOverride.featureColumns = site.featureColumns;
       if (site.density === "spacious") config.styleOverride.spacious = true;
       if (Array.isArray(site.blocksOrder) && site.blocksOrder.length) config.styleOverride.blocksOrder = site.blocksOrder;
+
+      // Второй проход: пробуем сгенерировать реальную кастомную вёрстку под референс.
+      // Если не получится (таймаут/ошибка/мусор) — тихо остаёмся на надёжном блочном движке.
+      if (process.env.OPENROUTER_KEY && site.screenshot) {
+        try {
+          config.customMiddleHtml = await generateCustomBody(site.screenshot, {
+            ref: config.ref, promo: config.promo, discount: config.discount,
+            h1: config.h1, sub: config.sub, cta: config.cta,
+            toolsTitle: config.toolsTitle, toolsDesc: config.toolsDesc, tools: config.tools,
+            stats: config.stats, steps: config.steps, faq: config.faq, finalTitle: config.finalTitle,
+          });
+        } catch (_) { /* остаёмся на блочном движке */ }
+      }
     }
 
     const html = renderLanding(config, true);
