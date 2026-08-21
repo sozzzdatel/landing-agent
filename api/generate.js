@@ -28,6 +28,7 @@ async function analyzeWithVision(imageUrl) {
 {
   "acc":"#hex основной фирменный цвет кнопок/акцентов",
   "acc2":"#hex второй акцентный цвет",
+  "bg":"#hex ФОН СТРАНИЦЫ — это важно: если фон не белый (бежевый/кремовый/тёмный/цветной) — обязательно укажи его настоящий hex, не пиши белый по умолчанию",
   "radius":"sharp или rounded — острые или скруглённые углы",
   "heroAlign":"center или left — как выровнен текст в первом экране",
   "featureColumns": 2 или 3 или 4 — сколько колонок в сетке карточек преимуществ (если есть),
@@ -110,6 +111,7 @@ module.exports = async (req, res) => {
       config.styleOverride = {};
       if (site.acc) config.styleOverride.acc = site.acc;
       if (site.acc2) config.styleOverride.acc2 = site.acc2;
+      if (site.bg && !/^#(ffffff|fff)$/i.test(site.bg)) config.styleOverride.bg = site.bg;
       if (site.radius === "sharp") config.styleOverride.radius = "6px";
       if (site.radius === "rounded") config.styleOverride.radius = "22px";
       if (site.heroAlign === "center") config.styleOverride.heroAlign = "center";
